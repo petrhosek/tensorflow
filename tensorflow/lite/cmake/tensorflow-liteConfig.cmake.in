@@ -1,0 +1,12 @@
+include(CMakeFindDependencyMacro)
+
+find_dependency(absl)
+find_dependency(Eigen3)
+find_dependency(Flatbuffers)
+find_dependency(NEON_2_SSE)
+find_dependency(cpuinfo)
+find_dependency(ruy)
+
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")

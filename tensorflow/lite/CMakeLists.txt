@@ -150,7 +150,7 @@ find_package(ruy REQUIRED)
 # Generate TensorFlow Lite FlatBuffer code.
 # We used to have an actual compilation logic with flatc but decided to use
 # schema_generated.h since flatc doesn't work with cross compilation.
-set(TFLITE_FLATBUFFERS_SCHEMA_DIR "${TFLITE_SOURCE_DIR}/schema")
+set(TFLITE_FLATBUFFERS_SCHEMA_DIR $<BUILD_INTERFACE:${TFLITE_SOURCE_DIR}/schema> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/schema>)
 set(TF_TARGET_PRIVATE_OPTIONS "")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang$")
   # TensorFlow uses a heap of deprecated proto fields so surpress these
@@ -470,7 +470,7 @@ include_directories(
 )
 
 # TFLite library
-add_library(tensorflow-lite
+set(_ALL_TFLITE_SRCS
   ${TFLITE_CORE_API_SRCS}
   ${TFLITE_CORE_SRCS}
   ${TFLITE_C_SRCS}
@@ -496,7 +496,15 @@ add_library(tensorflow-lite
   ${TFLITE_PROFILER_SRCS}
   ${TFLITE_SOURCE_DIR}/kernels/internal/utils/sparsity_format_converter.cc
   ${TFLITE_SOURCE_DIR}/schema/schema_utils.cc
+  ${TFLITE_SOURCE_DIR}/schema/schema_generated.h
 )
+add_library(tensorflow-lite
+  ${_ALL_TFLITE_SRCS}
+)
+set(_ALL_TFLITE_HDRS ${_ALL_TFLITE_SRCS})
+list(FILTER _ALL_TFLITE_HDRS INCLUDE REGEX ".*\\.h$")
+list(FILTER _ALL_TFLITE_HDRS EXCLUDE REGEX ".*_internal\\.h$")
+set_target_properties(tensorflow-lite PROPERTIES PUBLIC_HEADER "${_ALL_TFLITE_HDRS}")
 target_include_directories(tensorflow-lite
   PUBLIC
     ${TFLITE_INCLUDE_DIRS}
@@ -520,6 +528,8 @@ target_link_libraries(tensorflow-lite
     ${TFLITE_TARGET_DEPENDENCIES}
 )
 
+set_target_properties(tensorflow-lite PROPERTIES NO_SYSTEM_FROM_IMPORTED ON)
+
 if (NOT BUILD_SHARED_LIBS)
   list(APPEND TFLITE_TARGET_PUBLIC_OPTIONS "-DTFL_STATIC_LIBRARY_BUILD")
 endif()
@@ -529,6 +539,31 @@ target_compile_options(tensorflow-lite
   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
 )
 add_library(tensorflow::tensorflowlite ALIAS tensorflow-lite)
+
+install(
+  TARGETS tensorflow-lite
+  EXPORT ${PROJECT_NAME}Targets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(EXPORT ${PROJECT_NAME}Targets
+  NAMESPACE ${PROJECT_NAME}::
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+  "cmake/${PROJECT_NAME}Config.cmake.in"
+  "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+)
+
+install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+)
 
 # The kernel tests.
 if(TFLITE_KERNEL_TEST)

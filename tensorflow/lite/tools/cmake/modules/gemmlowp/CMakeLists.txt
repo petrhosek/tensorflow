@@ -50,13 +50,20 @@ add_library(gemmlowp_private INTERFACE)
 if(GEMMLOWP_ADD_HEADERS_TO_TARGETS)
   target_sources(gemmlowp_private INTERFACE ${GEMMLOWP_PRIVATE_HEADERS})
 endif()
-target_include_directories(gemmlowp_private INTERFACE "${GEMMLOWP_SOURCE_DIR}")
+target_include_directories(gemmlowp_private INTERFACE $<BUILD_INTERFACE:${GEMMLOWP_SOURCE_DIR}> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+install(TARGETS gemmlowp_private
+  EXPORT tensorflow-liteTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 
 add_library(gemmlowp INTERFACE)
 if(GEMMLOWP_ADD_HEADERS_TO_TARGETS)
   target_sources(gemmlowp INTERFACE ${GEMMLOWP_PUBLIC_HEADERS})
 endif()
-target_include_directories(gemmlowp INTERFACE "${GEMMLOWP_SOURCE_DIR}/public")
+target_include_directories(gemmlowp INTERFACE $<BUILD_INTERFACE:${GEMMLOWP_SOURCE_DIR}/public> $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/public>)
 target_link_libraries(gemmlowp INTERFACE gemmlowp_private)
 
 add_library(gemmlowp_eight_bit_int_gemm
@@ -84,4 +91,9 @@ target_include_directories(gemmlowp_profiler
   INTERFACE "${GEMMLOWP_SOURCE_DIR}/profiling"
 )
 
-
+install(TARGETS gemmlowp
+  EXPORT tensorflow-liteTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
